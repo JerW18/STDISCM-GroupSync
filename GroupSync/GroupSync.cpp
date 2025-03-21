@@ -2,13 +2,13 @@
 #include <fstream>
 #include <string>
 #include <cctype>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <random>
+#include <unordered_map>
 
-//a) There are only n instances that can be concurrently active.Thus, there can only be a maximum n number of parties that are currently in a dungeon.
-//b) A standard party of 5 is 1 tank, 1 healer, 3 DPS.
-//c) The solution should not result in a deadlock.
-//d) The solution should not result in starvation.
-//e) It is assumed that the input values arrived at the same time.
-//f) A time value(in seconds) t is randomly selected between t1 and t2.Where t1 represents the fastest clear time of a dungeon instance and t2 is the slowest clear time of a dungeon instance.For ease of testing t2 <= 15.
+#include "Dungeon.h"
 
 using namespace std;
 
@@ -23,7 +23,6 @@ bool isValidNumber(const string& str) {
     }
     return true;
 }
-
 
 static void readFile(uint32_t& dungeonCount, uint32_t& tankCount, uint32_t& healerCount, uint32_t& DPSCount, uint16_t& minTime, uint16_t& maxTime) {
     bool end = false;
@@ -57,6 +56,7 @@ static void readFile(uint32_t& dungeonCount, uint32_t& tankCount, uint32_t& heal
             end = true;
             break;
         }
+
         if ((key == "n" || key == "t" || key == "h" || key == "d") &&
             value > numeric_limits<uint32_t>::max())
         {
@@ -68,6 +68,13 @@ static void readFile(uint32_t& dungeonCount, uint32_t& tankCount, uint32_t& heal
             value > 15)
         {
             cerr << "Error: '" << key << "' exceeds max Time Value (15)!\n";
+            end = true;
+            break;
+        }
+        else if ((key == "t1" || key == "t2") &&
+            value < 1)
+        {
+            cerr << "Error: '" << key << "' must be greater than 0!\n";
             end = true;
             break;
         }
@@ -96,6 +103,28 @@ static void readFile(uint32_t& dungeonCount, uint32_t& tankCount, uint32_t& heal
     }
 }
 
+// Global mutex and output for logging.
+mutex outputMutex;
+ofstream outputFile("output.txt");
+
+void logOutput(const string& message) {
+    lock_guard<mutex> lock(outputMutex);
+    cout << message;
+    outputFile << message;
+}
+
+void logDungeonStatus(unordered_map<int, int>& dungeonStatus) {
+    string output = "Dungeon Status\n";
+    for (const auto& dungeon : dungeonStatus) {
+        int dungeonId = dungeon.first;
+        int status = dungeon.second;
+        output += "Dungeon " + to_string(dungeonId) + ": ";
+        output += (status == 0 ? "Empty" : "Active") + string("\n");
+    }
+    output += "\n";
+    logOutput(output);
+}
+
 int main()
 {
     uint32_t dungeonCount;
@@ -107,4 +136,87 @@ int main()
 
     readFile(dungeonCount, tankCount, healerCount, DPSCount, minTime, maxTime);
 
+	// Party Count
+    mutex partyMutex;
+    uint32_t partyCount = min({ tankCount, healerCount, DPSCount / 3 });
+
+	tankCount -= partyCount;
+	healerCount -= partyCount;
+	DPSCount -= partyCount * 3;
+
+    // Random Number generator 
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> dis(minTime, maxTime);
+
+    // Dungeon Status
+    mutex statusMutex;
+    unordered_map<int, int> dungeonStatus;
+
+	// Create Output File
+    ofstream outputFile("output.txt");
+
+    // Create Dungeon Instances
+    vector<Dungeon> dungeons;
+
+    for (uint32_t i = 0; i < dungeonCount; i++) {
+        dungeons.emplace_back(i + 1);
+        dungeonStatus[i + 1] = 0;
+    }
+
+    // Threading
+    vector<thread> instances;
+    
+    for (uint32_t i = 0; i < dungeonCount; i++) {
+        instances.push_back(thread([&, i]() {
+            while (true) {
+                {
+                    lock_guard<mutex> lock(partyMutex);
+                    if (partyCount == 0) {
+                        break;
+                    }
+                    partyCount--;
+                }
+                {
+                    lock_guard<mutex> lock(statusMutex);
+                    dungeonStatus[dungeons[i].getId()] = 1;
+                    logOutput("Party entered Dungeon " + to_string(dungeons[i].getId()) + "\n\n");
+                    logDungeonStatus(dungeonStatus);
+                }
+                int time = dis(gen);
+                dungeons[i].RunDungeon(time);
+                {
+                    lock_guard<mutex> lock(statusMutex);
+                    dungeonStatus[dungeons[i].getId()] = 0;
+                    logOutput("Party finished Dungeon " + to_string(dungeons[i].getId()) + "\n\n");
+                    logDungeonStatus(dungeonStatus);
+                }
+            }
+        }));
+    }
+
+	for (auto& instance : instances) {
+		instance.join();
+	}
+
+    // Print Summary.
+    string summary = "Summary\n";
+    for (uint32_t i = 0; i < dungeonCount; i++) {
+        summary += "Dungeon " + to_string(dungeons[i].getId()) + ": " +
+            "Parties Served: " + to_string(dungeons[i].getPartiesServed()) + " " +
+            "Total Time: " + to_string(dungeons[i].getTimeElapsed()) + " seconds\n";;
+    }
+	summary += "\n";
+	summary += "Remaining Troops: \n";
+    summary += "Tank: " + to_string(tankCount) + "\n";
+    summary += "Healer: " + to_string(healerCount) + "\n";
+    summary += "DPS: " + to_string(DPSCount) + "\n\n";
+    logOutput(summary);
+
+    outputFile.close();
+    
+	cout << "Press enter to exit...";
+	cin.get();
+
+	return 0;
 }

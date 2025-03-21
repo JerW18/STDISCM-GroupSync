@@ -26,6 +26,9 @@
     <Text Include="config.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="output.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Dungeon.h">
