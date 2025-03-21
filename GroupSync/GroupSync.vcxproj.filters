@@ -18,5 +18,18 @@
     <ClCompile Include="GroupSync.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Dungeon.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="config.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Dungeon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
