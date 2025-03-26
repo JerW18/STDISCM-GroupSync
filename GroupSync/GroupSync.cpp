@@ -103,8 +103,7 @@ static void readFile(uint32_t& dungeonCount, uint32_t& tankCount, uint32_t& heal
     }
 }
 
-// Global mutex and output for logging.
-mutex outputMutex;
+// Output for logging.
 ofstream outputFile("output.txt");
 
 void logOutput(const string& message) {
