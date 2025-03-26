@@ -108,7 +108,6 @@ mutex outputMutex;
 ofstream outputFile("output.txt");
 
 void logOutput(const string& message) {
-    lock_guard<mutex> lock(outputMutex);
     cout << message;
     outputFile << message;
 }
