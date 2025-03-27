@@ -15,10 +15,7 @@ using namespace std;
 bool isValidNumber(const string& str) {
     if (str.empty()) return false;
 
-    size_t start = 0;
-    if (str[0] == '-') start = 1;  // Allow leading negative sign
-
-    for (size_t i = start; i < str.size(); i++) {
+    for (size_t i = 0; i < str.size(); i++) {
         if (!isdigit(str[i])) return false;
     }
     return true;
@@ -38,12 +35,19 @@ static void readFile(uint32_t& dungeonCount, uint32_t& tankCount, uint32_t& heal
 
     while (inputFile >> key >> strValue) {
         if (!isValidNumber(strValue)) {
-            cerr << "Error: Invalid number format (only digits allowed) for key: " << key << endl;
+            cerr << "Error: Invalid number format (only positive integers allowed) for key: " << key << endl;
             end = true;
             break;
         }
 
-        value = stoll(strValue);  // Convert to signed integer
+        try {
+            value = stoull(strValue);
+        }
+        catch (const out_of_range&) {
+            cerr << "Error: Number out of range for key: " << key << endl;
+            end = true;
+            break;
+        }
 
         if (value < 0) {
             cerr << "Error: '" << key << "' cannot be negative!\n";
