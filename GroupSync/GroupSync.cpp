@@ -6,7 +6,7 @@
 #include <queue>
 #include <thread>
 #include <random>
-#include <unordered_map>
+#include <map>
 
 #include "Dungeon.h"
 
@@ -111,7 +111,7 @@ void logOutput(const string& message) {
     outputFile << message;
 }
 
-void logDungeonStatus(unordered_map<int, int>& dungeonStatus) {
+void logDungeonStatus(map<int, int>& dungeonStatus) {
     string output = "Dungeon Status\n";
     for (const auto& dungeon : dungeonStatus) {
         int dungeonId = dungeon.first;
@@ -149,7 +149,7 @@ int main()
 
     // Dungeon Status
     mutex statusMutex;
-    unordered_map<int, int> dungeonStatus;
+    map<int, int> dungeonStatus;
 
 	// Create Output File
     ofstream outputFile("output.txt");
