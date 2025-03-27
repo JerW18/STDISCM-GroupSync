@@ -76,7 +76,7 @@ static void readFile(uint32_t& dungeonCount, uint32_t& tankCount, uint32_t& heal
             break;
         }
         else if ((key == "t1" || key == "t2") &&
-            value < 0)
+            value < 1)
         {
             cerr << "Error: '" << key << "' must be greater than 0!\n";
             end = true;
