@@ -76,7 +76,7 @@ static void readFile(uint32_t& dungeonCount, uint32_t& tankCount, uint32_t& heal
             break;
         }
         else if ((key == "t1" || key == "t2") &&
-            value < 1)
+            value < 0)
         {
             cerr << "Error: '" << key << "' must be greater than 0!\n";
             end = true;
@@ -138,6 +138,8 @@ int main()
 
     readFile(dungeonCount, tankCount, healerCount, DPSCount, minTime, maxTime);
 
+    uint32_t currCount = 0;
+
 	// Party Count
     mutex partyMutex;
     uint32_t partyCount = min({ tankCount, healerCount, DPSCount / 3 });
@@ -172,26 +174,33 @@ int main()
     for (uint32_t i = 0; i < dungeonCount; i++) {
         instances.push_back(thread([&, i]() {
             while (true) {
-                {
-                    lock_guard<mutex> lock(partyMutex);
-                    if (partyCount == 0) {
-                        break;
+                if (currCount == i && dungeonStatus[dungeons[i].getId()] == 0) {
+                    currCount++;
+                    {
+                        lock_guard<mutex> lock(partyMutex);
+                        if (partyCount == 0) {
+                            break;
+                        }
+                        partyCount--;
                     }
-                    partyCount--;
+                    {
+                        lock_guard<mutex> lock(statusMutex);
+                        dungeonStatus[dungeons[i].getId()] = 1;
+                        logOutput("Party entered Dungeon " + to_string(dungeons[i].getId()) + "\n\n");
+                        logDungeonStatus(dungeonStatus);
+                    }
+                    int time = dis(gen);
+                    dungeons[i].RunDungeon(time);
+                    {
+                        lock_guard<mutex> lock(statusMutex);
+                        dungeonStatus[dungeons[i].getId()] = 0;
+                        logOutput("Party finished Dungeon " + to_string(dungeons[i].getId()) + "\n\n");
+                        logDungeonStatus(dungeonStatus);
+                    }
                 }
-                {
-                    lock_guard<mutex> lock(statusMutex);
-                    dungeonStatus[dungeons[i].getId()] = 1;
-                    logOutput("Party entered Dungeon " + to_string(dungeons[i].getId()) + "\n\n");
-                    logDungeonStatus(dungeonStatus);
-                }
-                int time = dis(gen);
-                dungeons[i].RunDungeon(time);
-                {
-                    lock_guard<mutex> lock(statusMutex);
-                    dungeonStatus[dungeons[i].getId()] = 0;
-                    logOutput("Party finished Dungeon " + to_string(dungeons[i].getId()) + "\n\n");
-                    logDungeonStatus(dungeonStatus);
+
+                if (currCount == dungeonCount) {
+					currCount = 0;
                 }
             }
         }));
